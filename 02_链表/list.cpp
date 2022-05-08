@@ -210,7 +210,7 @@ private:
 	friend void ReverseList(List<K>& list);  
 
 	// 求倒数第k个节点的值
-	friend bool GetLaskKNode(List<T>& list, int k, int& val);  
+	// friend bool GetLaskKNode(List<T>& list, int k, int& val);  
 	// 合并两个有序的单链表
 	// friend void MergeList(List<T>& list, List<T>& list1);
 };
