@@ -1,0 +1,18 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/zhouqinan/Projects/alg/01_Array/Array.cpp
+stdio.h
+-
+stdint.h
+-
+iostream
+-
+time.h
+-
+
