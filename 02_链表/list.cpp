@@ -3,6 +3,12 @@
 #include <cassert>  
 #include <time.h>
 #include <unordered_map>  
+#include <vector>  
+#include <algorithm>  
+#include <tuple>
+
+namespace zhou
+{
 
 using namespace std;
 
@@ -210,7 +216,7 @@ private:
 	friend void ReverseList(List<K>& list);  
 
 	// 求倒数第k个节点的值
-	// friend bool GetLaskKNode(List<T>& list, int k, int& val);  
+	friend bool GetLaskKNode(List<T>& list, int k, int& val);  
 	// 合并两个有序的单链表
 	// friend void MergeList(List<T>& list, List<T>& list1);
 };
@@ -245,7 +251,7 @@ void ReverseList(List<T>& list)
 // }
 
 #if 1
-int main()
+int main_1()
 {
 	{
 		List<int> link;
@@ -279,132 +285,454 @@ int main()
 }
 #endif  
 
+}  
 
-#if 0    
-// 头节点上也有数据的做法太恶心了,遍历时很不方便
-template<typename T>
+/*
+* 把上面注释起来,写个链表,不带模板 2022/11/3
+*/
+
+struct Node
+{	
+	static Node* NewNode(const int& data = 0, Node* next = nullptr){return new Node(data, next);}    
+	
+	// 当前指向的节点是不能删的.如果当前节点删了,后继节点的指针挂在哪呢?
+	// static void EraseNode(Node* node)
+	// {
+	// 	auto node_erase = node->p_next;
+	// 	if (nullptr != node_erase)  
+	// 	{
+	// 		node->p_next = node_erase->p_next;	
+	// 		delete node_erase;
+	// 	}						
+	// }
+
+	// 这个是之前没想到的,就是当前节点的引用存起来,然后就可以删除当前指向的节点,后继节点的指针放在当前的引用上    
+	// 给定一个指针的引用,就可以删除当前指针指向的节点
+	static void EraseNode(Node*& node)
+	{
+		auto erase_node = node;  
+		node = node->p_next;
+		delete erase_node;
+	}
+
+	/*
+	* @param 只逆序一个节点
+	* @param Node* p_pre_node, 当前这个要逆序的节点的,它的 next 该填的值 
+	* @param Node* node, 即当前要操作的这个节点    
+	* @return 即下一个要迭代的节点
+	*/
+	static Node* ReserveOne(Node* p_pre_node, Node* node)
+	{
+		auto tmp = node->p_next;    
+		node->p_next = p_pre_node;
+		return tmp;
+	}
+
+	static void Print(Node* node)
+	{
+		std::cout << "node:" << node->data << std::endl;
+	}
+
+	// 输入是节点指针的引用,由此指针拿到两个节点,并交换两个节点序,输出为指向第三节点的指针引用    	
+	static Node*& Swap(Node*& p_node)
+	{
+		assert(p_node != nullptr);
+		auto tmp = p_node->p_next;  
+		p_node->p_next = p_node;  
+		p_node = tmp;  
+		return tmp;
+	}
+
+	// 思来想去还是这么交换比较容易理解,用起来能继续容易迭代  
+	// 返回的是两个节点中的后一个节点,以及指向的第三节点的指针
+	static std::tuple<Node*, Node*> Swap(Node* node, Node* node1)
+	{
+		// 判断必须是 node 指向 node1
+		assert(node1 == node->p_next);  
+		auto tmp = node1->p_next;  
+		node1->p_next = node;  
+		node->p_next = tmp;  
+		return std::make_tuple(node, node->p_next);
+	}
+
+	// 根据两个指针(分别指向两个节点),把他们拼接在一起    
+	static void Cat(Node* node, Node* node1)
+	{
+		node->p_next = node1;
+	}
+	
+	// 把一个新的节点插入到两个节点中间,新的节点是第二参数   
+	static void Insert(Node* node, Node* node1)
+	{
+		auto tmp = node->p_next;  
+		node->p_next = node1;  
+		node1->p_next = tmp;
+	}
+
+	Node(int data_in, Node* next = nullptr):data(data_in),p_next(next){}  
+
+	void Print(){ std::cout << "[" << data << "]";}
+	
+	int data{0};  
+	Node* p_next{nullptr};	
+};
+
 class List
 {
-public:
-	List() :p_head(nullptr) {}
-	~List()
-	{
-		// TODO 析构链表  
-		// 从头节点依次先后析构,但是要提前拿到待析构的节点的指针
-	}
+public:  
+	List(){p_head = Node::NewNode();}
 
-	void InsertHead(T val)
+	// 节点头插法  
+	Node* InsertHead(const int& data)
 	{
-		if (p_head == nullptr)
+		auto p_first = p_head->p_next;  
+		auto p_node = Node::NewNode(data, p_first);				  
+		p_head->p_next = p_node;		  		
+			
+	}  
+
+	// 节点尾插法  
+	Node* InsertTail(const int& data)
+	{
+		auto tail = Node::NewNode(data);    
+		auto p = p_head->p_next;  
+		if (nullptr == p) 
 		{
-			p_head = new Node(val, nullptr);
-			return;
+			p = tail;  
+			return tail;
 		}
 
-		Insert(p_head, val);
-		return;
-	}
-
-	void InsertTail(T val)
-	{
-		if (p_head == nullptr)
+		while (nullptr != p->p_next)
 		{
-			p_head = new Node(val, nullptr);
-			return;
+			p = p->p_next->p_next;
 		}
+		p->p_next = tail;  
+		return tail;
+	}  
 
-		auto p_trail = FindTail();
-		Insert(p_trail, val);
-	}
-
-	// 只删除链表中首次出现的目标  
-	// 看起来逻辑并不简洁  
-	void Remove(T val)
+	// 删除查找到的第一个节点  
+	void Remove(const int& data)
 	{
-		do
-		{
-			// 链表中至少有两个节点
-			if (p_head->p_next != nullptr)	break;
-			// 链表中虽然只有一个节点,但是节点中的数据不是要删除的数据,那就直接 return  
-			if (p_head->data != val)	return;
+		// 注释的这段也是ok的
+		// auto p = p_head;  
+		// if (nullptr == p->p_next)  return;
 
-			// 那么剩下的这种情况就是只有首节点,并且首节点就是要删除的目标  
-			// 删掉节点并 return 
+		// while (data != p->p_next->data)
+		// {
+		// 	p = p->p_next->p_next;  
+		// 	if (nullptr == p->p_next)	return;
+		// }  
+		// auto tmp = p->p_next;
+		// p->p_next = p->p_next->p_next;  
+		// delete tmp;  
+
+		// 将下面 RemoveAll 稍加改动即可
+		auto p = p_head;  		
+		while(nullptr != p->p_next)
+		{
+			if (data == p->p_next->data)
 			{
-				delete p_head;
-				p_head = nullptr;
-				return;
-			}
-		} while (0);
+				Node::EraseNode(p->p_next);  
+				break;
+			}  
+			p = p->p_next;
+		}
+	}  
 
-		// 节点数 >= 2, 但首节点就是要删除的目标,这种如何处理  
-		if (p_head->data == val)
+	// 删除查找到的所有节点  
+	void RemoveAll(const int& data)
+	{
+		auto p = p_head;  		
+		while(nullptr != p->p_next)
 		{
-			auto tmp = p_head;
-			p_head = tmp->p_next;
-			delete tmp;
+			if (data == p->p_next->data)
+			{
+				Node::EraseNode(p->p_next);  
+				continue;
+			}  
+			p = p->p_next;
+		}		
+	}
+
+	// 逆序  
+	// 把问题压缩成的单个节点的关系  
+	// 一个节点向谁逆序,即 next 填上谁?在用 next 遍历到尾的过程中,可以用 next 作为输入  
+	// 一个节点操作完,要移向下一个节点,如何移动  
+	// 归纳就是:1.节点的 next 域填什么? 2.下一节点如何迭代    
+	// 如果有第一个节点,则第一节点单独处理.并且保存第二节点的地址,由此开始做逆序操作  
+	void Reverse()  
+	{
+		Node* p_first{nullptr};  
+		Node* p_second{nullptr};  		
+		if (nullptr != p_head->p_next)  
+		{
+			p_first = p_head->p_next;
+			p_second = p_head->p_next->p_next;  			
+		}
+
+		// 一共才只有一个节点,第二节点都不存在
+		if (nullptr == p_second)	return;  
+			
+		auto p_it = p_second;    
+		auto p_pre_node = p_first;
+		while (nullptr != p_it)
+		{			
+			// 已经到了最后一个节点,让头节点指向这个节点
+			if (nullptr == p_it->p_next)
+			{
+				p_head->p_next = p_it;    
+			}	
+
+			// 先缓存函数的右参数,下次迭代时会更新到左参数上  
+			// 其实理这个逻辑它的规律性是很强的,它的迭代规律用纸画出来很清晰的!!
+			// 关键在于,第一次写的时候可能出错,而调试这里的关系就是快速定位的关键!!
+			auto tmp = p_it;
+			p_it = Node::ReserveOne(p_pre_node, p_it);      			
+			p_pre_node = tmp;
+		}
+
+		// 最后再来修改第一个节点的 next 域,将它置为 nullptr
+		p_first->p_next = nullptr;  		
+	}
+	
+	// 找到倒数的第几个节点
+	Node* FindTail(const uint32_t& tail_index)
+	{  
+		auto tmp{p_head->p_next};  
+		auto node_cnts = Size();
+
+		assert(tail_index <= node_cnts);  
+
+		// 比如只有一个节点,想找倒数第一节点, index 为 1 - 1
+		auto index = node_cnts - tail_index;  
+		tmp = p_head->p_next;  
+		while (index)
+		{
+			tmp = tmp->p_next;
+			index--;
+		}  
+		return tmp;
+	}
+
+	// 这个其实是大的数往后冒泡  
+	// 可以连续调用它来实现排序
+	void BubbleOnce()  
+	{
+		// 一个节点都没有,或者只有一个节点
+		if (nullptr == p_head->p_next)
+		{
+			return;
+		}
+		if (nullptr == p_head->p_next->p_next)
+		{
 			return;
 		}
 
-		// 目标节点在第二个及以后的节点上  
-		auto tmp = p_head;
-		while (tmp->p_next->data != val)
+		auto p = p_head->p_next;  
+		auto p1 = p_head->p_next->p_next;
+		auto p_change = p_head;
+		while (p->p_next != nullptr)
+		{				
+			// 调换 > / < 符号实现冒泡的数左移动,或右移动		
+			if (p->data > p1->data)  
+			{
+				auto [p_tmp, p_tmp1] = Node::Swap(p, p1);  
+				// 交换之后是 p1(指向) 节点指向 p(指向) 节点
+				p_change->p_next = p1;
+				p_change = p1;
+				p = p_tmp;  
+				p1 = p_tmp1;								
+			}		
+			else
+			{
+				p = p->p_next;  
+				p1 = p->p_next;
+				p_change = p_change->p_next;
+			}				
+		}
+	}
+
+	// 节点从小到大排序
+	void SortLess()
+	{
+		auto cnts = Size();  
+		while (cnts-- > 0)
 		{
+			BubbleOnce();
+		}
+	}
+
+	// 
+	uint64_t Size()
+	{
+		auto tmp{p_head->p_next};  
+		auto node_cnts{0};
+		while (nullptr != tmp)
+		{
+			node_cnts++;
 			tmp = tmp->p_next;
-		}
-
-		auto tmp1 = tmp->p_next;
-		tmp->p_next = tmp->p_next->p_next;
-		delete tmp1;
-		tmp1 = nullptr;
-		return;
+		}  
+		return node_cnts;
 	}
 
-	// 删除节点中所有匹配的目标  
-	void RemoveAll(T val)
-	{
-		auto tmp = p_head;
-
-		while (tmp->data != val)
+	// 合并两个有序链表  
+	// 输入两个链表,合并到第一个上  
+	// 从后一个链表中的节点中取一个出来,插到前一个有序链表中
+	static void MergeLess(List list, List list1)
+	{		
+		auto p{list.p_head};
+		auto p1{list1.p_head->p_next};  
+		// 先遍历取第二链表上的节点
+		while (nullptr != p1)
 		{
-			tmp = tmp->p_next;
-		}
-		// 
-
+			auto tmp = p1->p_next;
+			// 取出来然后插入到第一链表中    
+			while (true)
+			{
+				if ( (nullptr == p->p_next) || (p1->data < p->p_next->data) )
+				{
+					Node::Insert(p, p1);
+					break;
+				}
+				else
+				{
+					p = p->p_next;
+				}
+			}
+			p1 = tmp;
+		}		
 	}
 
-	bool Find(T val)
+	void Print()
 	{
-
-	}
-
-	void Show()
-	{
-
-	}
-
-	static void Insert(Node<T>* p_node, T val)
-	{
-		assert(p_node);
-		p_node->p_next = new Node(val, p_node->p_next);
-	}
-
-private:
-
-
-	Node<T>* FindTail()
-	{
-		if (p_head == nullptr)	return p_head;
-
-		auto p_tmp = p_head;
-		while (p_tmp->p_next != nullptr)
+		auto p = p_head;
+		while(nullptr != p->p_next)
 		{
-			p_tmp = p_tmp->p_next;
-		}
-		return p_tmp;
+			p->p_next->Print();  
+			p = p->p_next;
+		}  
+		std::cout << std::endl;
 	}
 
-private:
-	Node<T>* p_head;	// 头节点上也是要带数据的
+private:  
+	Node* p_head;
 };
-#endif // 0
+
+template<typename T>
+void PrintContinar(T data)
+{
+	for(const auto& each : data)
+	{
+		std::cout << "[" << each << "]";
+	}  
+	std::cout << std::endl;
+}
+
+template<typename T>
+void PrintContinarR(T data)
+{
+	auto rb = data.rbegin();
+	while (rb != data.rend())
+	{
+		std::cout << "[" << *rb << "]";
+		rb++;
+	}
+	std::cout << std::endl;
+}
+
+int main()
+{
+	srand(time(0));  
+	List list;
+	std::vector<int> vec_int;
+	for(auto i = 0; i < 20; i++)
+	{
+		auto rand_num = rand() % 100;  
+		list.InsertHead(rand_num);
+		vec_int.insert(vec_int.begin(), rand_num);  
+		list.InsertTail(rand_num);
+		vec_int.insert(vec_int.end(), rand_num);
+	}
+
+	// 一 删除元素  
+	auto target = vec_int.at(0);
+	list.Remove(target);	  
+	auto it = std::find(vec_int.begin(), vec_int.end(), target);  
+	if(it != vec_int.end())	vec_int.erase(it);  
+	target = vec_int.at(4);    	
+ 	list.Remove(target);	  
+	it = std::find(vec_int.begin(), vec_int.end(), target);  
+	if(it != vec_int.end())	vec_int.erase(it);  
+	target = vec_int.at(10);    	
+ 	list.Remove(target);	  
+	it = std::find(vec_int.begin(), vec_int.end(), target);  
+	if(it != vec_int.end())	vec_int.erase(it); 
+	target = vec_int.at(12);    	
+ 	list.Remove(target);	  
+	it = std::find(vec_int.begin(), vec_int.end(), target);  
+	if(it != vec_int.end())	vec_int.erase(it);  
+
+	// 二 删除指定的所有元素
+	// auto target = vec_int.at(10);
+	// list.RemoveAll(target);	  
+	// auto it = vec_int.begin();
+	// while (it != vec_int.end())
+	// {
+	// 	if(target == *it)	it = vec_int.erase(it);
+	// 	else	it++;
+	// }
+
+	// target = vec_int.at(4);
+	// list.RemoveAll(target);	  
+	// it = vec_int.begin();
+	// while (it != vec_int.end())
+	// {
+	// 	if(target == *it)	it = vec_int.erase(it);
+	// 	else	it++;
+	// }
+
+	// target = vec_int.at(12);
+	// list.RemoveAll(target);	  
+	// it = vec_int.begin();
+	// while (it != vec_int.end())
+	// {
+	// 	if(target == *it)	it = vec_int.erase(it);
+	// 	else	it++;
+	// }
+
+	// list.Print();  
+	// PrintContinar(vec_int);    
+
+	// 三 逆序链表  
+	// 先打印,再逆序    	
+	// list.Print();    
+	list.Reverse();
+	list.Print();      
+	PrintContinarR(vec_int);  
+
+	// 四 想找倒数第二节点  
+	auto target_node = list.FindTail(19);    
+	Node::Print(target_node);
+
+	// 五 按从小到大排序  
+	std::cout << "Sort by less" << std::endl;  
+	list.SortLess();
+	list.Print();        
+
+	// 六 再造一个有序链表,把两个链表做有序合并  
+	std::cout << "================== 2nd list " << std::endl;
+	List list1;
+	for(auto i = 0; i < 20; i++)
+	{
+		auto rand_num = rand() % 100;  
+		list1.InsertHead(rand_num);		
+		list1.InsertTail(rand_num);	
+	}	
+	list1.SortLess();
+	list1.Print();  	
+	List::MergeLess(list, list1);      
+	std::cout << "================== 2nd list merge it" << std::endl;  
+	list.Print();
+
+	return 0;
+}

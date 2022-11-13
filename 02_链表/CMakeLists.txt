@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)  
 
 project(list)
-
+set(CMAKE_BUILD_TYPE Debug)
 # 不宜这么写
 # if(${CMAKE_TOOLCHAIN_FILE})    
 # 用于判断时都不宜用取变量的方式,宜直接写,不加修饰
