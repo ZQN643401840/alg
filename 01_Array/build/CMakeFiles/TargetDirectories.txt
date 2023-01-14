@@ -1,3 +1,0 @@
-/home/zhouqinan/Projects/alg/01_Array/build/CMakeFiles/rebuild_cache.dir
-/home/zhouqinan/Projects/alg/01_Array/build/CMakeFiles/Array.dir
-/home/zhouqinan/Projects/alg/01_Array/build/CMakeFiles/edit_cache.dir
